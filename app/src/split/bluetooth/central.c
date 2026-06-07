@@ -59,6 +59,7 @@ struct peripheral_slot {
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_PERIPHERAL_HID_INDICATORS)
     uint16_t update_hid_indicators;
 #endif // IS_ENABLED(CONFIG_ZMK_SPLIT_PERIPHERAL_HID_INDICATORS)
+    uint16_t update_rgb_indicator;
     uint16_t selected_physical_layout_handle;
     uint8_t position_state[POSITION_STATE_DATA_LEN];
     uint8_t changed_positions[POSITION_STATE_DATA_LEN];
@@ -216,6 +217,7 @@ int release_peripheral_slot(int index) {
     slot->subscribe_params.value_handle = 0;
     slot->run_behavior_handle = 0;
     slot->selected_physical_layout_handle = 0;
+    slot->update_rgb_indicator = 0;
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_PERIPHERAL_HID_INDICATORS)
     slot->update_hid_indicators = 0;
 #endif // IS_ENABLED(CONFIG_ZMK_SPLIT_PERIPHERAL_HID_INDICATORS)
@@ -620,6 +622,10 @@ static uint8_t split_central_chrc_discovery_func(struct bt_conn *conn,
             LOG_DBG("Found update HID indicators handle");
             slot->update_hid_indicators = bt_gatt_attr_value_handle(attr);
 #endif // IS_ENABLED(CONFIG_ZMK_SPLIT_PERIPHERAL_HID_INDICATORS)
+        } else if (!bt_uuid_cmp(((struct bt_gatt_chrc *)attr->user_data)->uuid,
+                                BT_UUID_DECLARE_128(ZMK_SPLIT_BT_UPDATE_RGB_INDICATOR_UUID))) {
+            LOG_DBG("Found update RGB indicator handle");
+            slot->update_rgb_indicator = bt_gatt_attr_value_handle(attr);
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING)
         } else if (!bt_uuid_cmp(((struct bt_gatt_chrc *)attr->user_data)->uuid,
                                 BT_UUID_BAS_BATTERY_LEVEL)) {
@@ -686,7 +692,7 @@ static uint8_t split_central_chrc_discovery_func(struct bt_conn *conn,
     }
 
     bool subscribed = slot->run_behavior_handle && slot->subscribe_params.value_handle &&
-                      slot->selected_physical_layout_handle;
+                      slot->selected_physical_layout_handle && slot->update_rgb_indicator;
 
 #if ZMK_KEYMAP_HAS_SENSORS
     subscribed = subscribed && slot->sensor_subscribe_params.value_handle;
@@ -1071,6 +1077,23 @@ void split_central_split_run_callback(struct k_work *work) {
                 &peripherals[payload_wrapper.source],
                 payload_wrapper.cmd.data.set_physical_layout.layout_idx);
             break;
+        case ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_SET_RGB_INDICATOR: {
+            if (peripherals[payload_wrapper.source].update_rgb_indicator == 0) {
+                LOG_WRN("No handle to update RGB indicator on peripheral");
+                break;
+            }
+
+            int err = bt_gatt_write_without_response(
+                peripherals[payload_wrapper.source].conn,
+                peripherals[payload_wrapper.source].update_rgb_indicator,
+                &payload_wrapper.cmd.data.set_rgb_indicator,
+                sizeof(payload_wrapper.cmd.data.set_rgb_indicator), true);
+
+            if (err) {
+                LOG_ERR("Failed to write RGB indicator characteristic (err %d)", err);
+            }
+            break;
+        }
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_PERIPHERAL_HID_INDICATORS)
         case ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_SET_HID_INDICATORS:
             LOG_WRN("do the indicators dance");
@@ -1176,6 +1199,7 @@ static int split_central_bt_send_command(uint8_t source,
     switch (cmd.type) {
     case ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_SET_HID_INDICATORS:
     case ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_SET_PHYSICAL_LAYOUT:
+    case ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_SET_RGB_INDICATOR:
     case ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_INVOKE_BEHAVIOR: {
         struct central_cmd_wrapper wrapper = {.source = source, .cmd = cmd};
         return split_bt_invoke_behavior_payload(wrapper);

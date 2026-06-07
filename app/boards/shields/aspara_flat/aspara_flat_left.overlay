@@ -1,0 +1,29 @@
+/*
+ * Copyright (c) 2026
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "aspara_flat.dtsi"
+
+&kscan0 {
+    row-gpios
+        = <&gpio1 10 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>
+        , <&gpio0 20 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>
+        , <&gpio0 22 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>
+        , <&gpio0 24 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>
+        , <&gpio0 25 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>
+        , <&gpio1 2 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>
+        ;
+
+    col-gpios
+        = <&gpio1 11 GPIO_ACTIVE_HIGH>
+        , <&gpio0 13 GPIO_ACTIVE_HIGH>
+        , <&gpio0 15 GPIO_ACTIVE_HIGH>
+        , <&gpio0 17 GPIO_ACTIVE_HIGH>
+        , <&gpio0 19 GPIO_ACTIVE_HIGH>
+        , <&gpio0 21 GPIO_ACTIVE_HIGH>
+        , <&gpio0 23 GPIO_ACTIVE_HIGH>
+        , <&gpio1 1 GPIO_ACTIVE_HIGH>
+        ;
+};

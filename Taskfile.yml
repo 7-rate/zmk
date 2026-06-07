@@ -1,0 +1,23 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Build left and right firmware
+    dir: app
+    cmds:
+      - west build -p -d build/left -b raytac_mdbt50q_db_40/nrf52840 -S studio-rpc-usb-uart -- -DSHIELD=aspara_flat_left
+      - west build -p -d build/right -b raytac_mdbt50q_db_40/nrf52840 -- -DSHIELD=aspara_flat_right
+
+  build_debug_rtt:
+    desc: Build with RTT logging enabled
+    dir: app
+    cmds:
+      - west build -p -d build/left -b raytac_mdbt50q_db_40/nrf52840 -- -DSHIELD=aspara_flat_left -DCONFIG_ZMK_RTT_LOGGING=y
+      - west build -p -d build/right -b raytac_mdbt50q_db_40/nrf52840 -- -DSHIELD=aspara_flat_right -DCONFIG_ZMK_RTT_LOGGING=y
+
+  build_debug_usb:
+    desc: Build with USB logging enabled (central/left)
+    dir: app
+    cmds:
+      - west build -p -d build/left -b raytac_mdbt50q_db_40/nrf52840 -S zmk-usb-logging -- -DSHIELD=aspara_flat_left
+      - west build -p -d build/right -b raytac_mdbt50q_db_40/nrf52840 -- -DSHIELD=aspara_flat_right

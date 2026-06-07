@@ -1,0 +1,11 @@
+# Copyright (c) 2026 The ZMK Contributors
+# SPDX-License-Identifier: MIT
+
+config ZMK_RGB_INDICATOR
+    bool "RGB indicator"
+    depends on ZMK_SPLIT
+    depends on ZMK_SPLIT_BLE
+    select LED_STRIP
+    help
+      Enable split RGB indicator support for boards that provide a
+      zmk,underglow chosen LED strip node.

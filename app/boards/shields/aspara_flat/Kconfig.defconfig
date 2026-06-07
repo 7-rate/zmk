@@ -1,0 +1,25 @@
+# Copyright (c) 2026
+# SPDX-License-Identifier: MIT
+
+if SHIELD_ASPARA_FLAT_LEFT
+
+config ZMK_KEYBOARD_NAME
+    default "Aspara Flat"
+
+config ZMK_SPLIT_ROLE_CENTRAL
+    default y
+
+config ZMK_USB
+    default y
+
+endif
+
+if SHIELD_ASPARA_FLAT_LEFT || SHIELD_ASPARA_FLAT_RIGHT
+
+config ZMK_SPLIT
+    default y
+
+config ZMK_BLE
+    default y
+
+endif

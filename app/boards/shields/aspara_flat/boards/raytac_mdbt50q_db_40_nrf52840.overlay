@@ -1,0 +1,66 @@
+#include <common/nordic/nrf52840_uf2_boot_mode.dtsi>
+
+/delete-node/ &boot_partition;
+/delete-node/ &slot0_partition;
+/delete-node/ &slot1_partition;
+/delete-node/ &storage_partition;
+
+/ {
+    chosen {
+        zephyr,code-partition = &code_partition;
+    };
+};
+
+&flash0 {
+    partitions {
+        compatible = "fixed-partitions";
+        #address-cells = <1>;
+        #size-cells = <1>;
+
+        sd_partition: partition@0 {
+            reg = <0x00000000 0x00026000>;
+        };
+
+        code_partition: partition@26000 {
+            reg = <0x00026000 0x000c6000>;
+        };
+
+        /*
+         * The flash starting at 0x000ec000 and ending at
+         * 0x000f3fff is reserved for use by the application.
+         */
+        storage_partition: partition@ec000 {
+            reg = <0x000ec000 0x00008000>;
+        };
+
+        boot_partition: partition@f4000 {
+            reg = <0x000f4000 0x0000c000>;
+        };
+    };
+};
+
+&qspi {
+    status = "disabled";
+};
+
+&uart1 {
+    status = "disabled";
+};
+
+&pwm0 {
+    status = "disabled";
+};
+
+/ {
+    leds {
+        status = "disabled";
+    };
+
+    pwmleds {
+        status = "disabled";
+    };
+
+    buttons {
+        status = "disabled";
+    };
+};

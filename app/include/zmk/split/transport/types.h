@@ -61,11 +61,24 @@ struct zmk_split_transport_peripheral_event {
     } data;
 } __packed;
 
+enum zmk_split_rgb_indicator_mode {
+    ZMK_SPLIT_RGB_INDICATOR_MODE_USB = 0,
+    ZMK_SPLIT_RGB_INDICATOR_MODE_BLE_CONNECTED = 1,
+    ZMK_SPLIT_RGB_INDICATOR_MODE_BLE_DISCONNECTED = 2,
+};
+
+struct zmk_split_transport_central_command_set_rgb_indicator {
+    uint8_t mode;
+    uint8_t active_profile_index;
+    uint8_t connected;
+} __packed;
+
 enum zmk_split_transport_central_command_type {
     ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_POLL_EVENTS,
     ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_INVOKE_BEHAVIOR,
     ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_SET_PHYSICAL_LAYOUT,
     ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_SET_HID_INDICATORS,
+    ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_SET_RGB_INDICATOR,
 } __packed;
 
 struct zmk_split_transport_central_command {
@@ -87,5 +100,7 @@ struct zmk_split_transport_central_command {
         struct {
             zmk_hid_indicators_t indicators;
         } set_hid_indicators;
+
+        struct zmk_split_transport_central_command_set_rgb_indicator set_rgb_indicator;
     } data;
 } __packed;

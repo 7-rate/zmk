@@ -24,10 +24,20 @@
 
 #include <zephyr/init.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/util.h>
 
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 const struct zmk_split_transport_peripheral *active_transport;
+
+__attribute__((weak)) int
+zmk_split_peripheral_handle_rgb_indicator_sync(uint8_t mode, uint8_t active_profile_index,
+                                               bool connected) {
+    ARG_UNUSED(mode);
+    ARG_UNUSED(active_profile_index);
+    ARG_UNUSED(connected);
+    return -ENOTSUP;
+}
 
 int zmk_split_transport_peripheral_command_handler(
     const struct zmk_split_transport_peripheral *transport,
@@ -66,6 +76,11 @@ int zmk_split_transport_peripheral_command_handler(
             .indicators = cmd.data.set_hid_indicators.indicators});
     }
 #endif
+    case ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_SET_RGB_INDICATOR: {
+        return zmk_split_peripheral_handle_rgb_indicator_sync(
+            cmd.data.set_rgb_indicator.mode, cmd.data.set_rgb_indicator.active_profile_index,
+            cmd.data.set_rgb_indicator.connected != 0);
+    }
     default:
         LOG_WRN("Unhandled command type %d", cmd.type);
         return -ENOTSUP;

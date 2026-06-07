@@ -13,6 +13,7 @@
 #include <zmk/pointing/input_split.h>
 
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/util.h>
 
 #include <zmk/event_manager.h>
 #include <zmk/events/battery_state_changed.h>
@@ -22,6 +23,11 @@
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 const struct zmk_split_transport_central *active_transport;
+
+__attribute__((weak)) void
+zmk_split_central_transport_status_changed_hook(struct zmk_split_transport_status status) {
+    ARG_UNUSED(status);
+}
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING)
 
@@ -109,6 +115,44 @@ int zmk_split_central_invoke_behavior(uint8_t source, struct zmk_behavior_bindin
 
     return active_transport->api->send_command(source, command);
 };
+
+int zmk_split_central_update_rgb_indicator(uint8_t mode, uint8_t active_profile_index,
+                                           bool connected) {
+    if (!active_transport || !active_transport->api ||
+        !active_transport->api->get_available_source_ids || !active_transport->api->send_command) {
+        return -ENODEV;
+    }
+
+    uint8_t source_ids[ZMK_SPLIT_CENTRAL_PERIPHERAL_COUNT];
+
+    int ret = active_transport->api->get_available_source_ids(source_ids);
+
+    if (ret < 0) {
+        return ret;
+    }
+
+    struct zmk_split_transport_central_command command = {
+        .type = ZMK_SPLIT_TRANSPORT_CENTRAL_CMD_TYPE_SET_RGB_INDICATOR,
+        .data =
+            {
+                .set_rgb_indicator =
+                    {
+                        .mode = mode,
+                        .active_profile_index = active_profile_index,
+                        .connected = connected ? 1 : 0,
+                    },
+            },
+    };
+
+    for (size_t i = 0; i < ret; i++) {
+        ret = active_transport->api->send_command(source_ids[i], command);
+        if (ret < 0) {
+            return ret;
+        }
+    }
+
+    return 0;
+}
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_PERIPHERAL_HID_INDICATORS)
 
@@ -198,6 +242,8 @@ static int select_first_available_transport(void) {
 
 static int transport_status_changed_cb(const struct zmk_split_transport_central *central,
                                        struct zmk_split_transport_status status) {
+    zmk_split_central_transport_status_changed_hook(status);
+
     if (central == active_transport) {
         LOG_DBG("Central at %p changed status: enabled %d, available %d, connections %d", central,
                 status.enabled, status.available, status.connections);

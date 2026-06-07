@@ -1,0 +1,13 @@
+file_format: "1"
+id: aspara_flat
+name: Aspara Flat
+type: shield
+url: https://example.com/aspara_flat
+requires: [raytac_mdbt50q_db_40]
+features:
+  - keys
+  - studio
+  - underglow
+siblings:
+  - aspara_flat_left
+  - aspara_flat_right

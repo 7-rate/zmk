@@ -50,6 +50,20 @@ static uint8_t lithium_ion_mv_to_pct(int16_t bat_mv) {
 
 #endif // IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING_FETCH_MODE_LITHIUM_VOLTAGE)
 
+#if IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING_FETCH_MODE_NIMH_2S_VOLTAGE)
+static uint8_t nimh_2s_mv_to_pct(int16_t bat_mv) {
+    // Approximate 2-cell NiMH discharge: 2.0V (empty) to 2.8V (full).
+    if (bat_mv >= 2800) {
+        return 100;
+    } else if (bat_mv <= 2000) {
+        return 0;
+    }
+
+    return (bat_mv - 2000) / 8;
+}
+
+#endif // IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING_FETCH_MODE_NIMH_2S_VOLTAGE)
+
 static int zmk_battery_update(const struct device *battery) {
     struct sensor_value state_of_charge;
     int rc;
@@ -68,7 +82,8 @@ static int zmk_battery_update(const struct device *battery) {
         LOG_DBG("Failed to get battery state of charge: %d", rc);
         return rc;
     }
-#elif IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING_FETCH_MODE_LITHIUM_VOLTAGE)
+#elif IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING_FETCH_MODE_LITHIUM_VOLTAGE) ||                       \
+    IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING_FETCH_MODE_NIMH_2S_VOLTAGE)
     rc = sensor_sample_fetch_chan(battery, SENSOR_CHAN_VOLTAGE);
     if (rc != 0) {
         LOG_DBG("Failed to fetch battery values: %d", rc);
@@ -84,7 +99,12 @@ static int zmk_battery_update(const struct device *battery) {
     }
 
     uint16_t mv = voltage.val1 * 1000 + (voltage.val2 / 1000);
+
+#if IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING_FETCH_MODE_LITHIUM_VOLTAGE)
     state_of_charge.val1 = lithium_ion_mv_to_pct(mv);
+#elif IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING_FETCH_MODE_NIMH_2S_VOLTAGE)
+    state_of_charge.val1 = nimh_2s_mv_to_pct(mv);
+#endif
 
     LOG_DBG("State of change %d from %d mv", state_of_charge.val1, mv);
 #else

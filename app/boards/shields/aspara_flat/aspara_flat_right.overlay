@@ -1,0 +1,37 @@
+/*
+ * Copyright (c) 2026
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "aspara_flat.dtsi"
+
+&default_transform {
+    col-offset = <8>;
+};
+
+&kscan0 {
+    row-gpios
+        = <&gpio0 28 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>
+        , <&gpio0 20 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>
+        , <&gpio0 22 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>
+        , <&gpio0 24 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>
+        , <&gpio0 25 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>
+        , <&gpio1 2 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>
+        ;
+
+    col-gpios
+        = <&gpio0 29 GPIO_ACTIVE_HIGH>
+        , <&gpio1 15 GPIO_ACTIVE_HIGH>
+        , <&gpio1 13 GPIO_ACTIVE_HIGH>
+        , <&gpio1 11 GPIO_ACTIVE_HIGH>
+        , <&gpio0 15 GPIO_ACTIVE_HIGH>
+        , <&gpio0 17 GPIO_ACTIVE_HIGH>
+        , <&gpio0 19 GPIO_ACTIVE_HIGH>
+        , <&gpio0 21 GPIO_ACTIVE_HIGH>
+        ;
+};
+
+&led_strip {
+    chain-length = <3>;
+};

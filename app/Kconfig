@@ -370,6 +370,8 @@ config ZMK_BACKLIGHT_AUTO_OFF_USB
 
 endif # ZMK_BACKLIGHT
 
+rsource "src/indicators/Kconfig.rgb_indicator"
+
 endmenu # Display/LED Options
 
 rsource "src/pointing/Kconfig"
@@ -392,6 +394,9 @@ config ZMK_BATTERY_REPORTING_FETCH_MODE_STATE_OF_CHARGE
 
 config ZMK_BATTERY_REPORTING_FETCH_MODE_LITHIUM_VOLTAGE
     bool "Lithium Voltage"
+
+config ZMK_BATTERY_REPORTING_FETCH_MODE_NIMH_2S_VOLTAGE
+    bool "NiMH 2S Voltage"
 
 endchoice
 
@@ -553,7 +558,7 @@ config ZMK_LOGGING_MINIMAL
 if !ZMK_LOGGING_MINIMAL
 
 config ZMK_LOG_LEVEL
-    default 4
+    default 3
 
 endif
 
