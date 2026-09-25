@@ -62,6 +62,7 @@ static struct rgb_indicator_state state = {
 static bool initialized;
 static uint8_t animation_blue_brightness;
 static bool ready_warning_logged;
+static bool refresh_timer_running;
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
 
@@ -203,6 +204,24 @@ static void refresh_tick_handler(struct k_timer *timer) {
 
 K_TIMER_DEFINE(rgb_indicator_refresh_timer, refresh_tick_handler, NULL);
 
+static void ensure_refresh_timer_running(void) {
+    if (refresh_timer_running) {
+        return;
+    }
+
+    k_timer_start(&rgb_indicator_refresh_timer, K_NO_WAIT, K_MSEC(RGB_INDICATOR_REFRESH_PERIOD_MS));
+    refresh_timer_running = true;
+}
+
+static void ensure_refresh_timer_stopped(void) {
+    if (!refresh_timer_running) {
+        return;
+    }
+
+    k_timer_stop(&rgb_indicator_refresh_timer);
+    refresh_timer_running = false;
+}
+
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
 
 static void refresh_state_from_system(void) {
@@ -324,8 +343,9 @@ static void update_animation_state(struct k_work *work) {
 #endif
 
     const uint8_t mode = effective_mode();
+    const bool should_animate = mode == ZMK_SPLIT_RGB_INDICATOR_MODE_BLE_DISCONNECTED;
 
-    if (mode == ZMK_SPLIT_RGB_INDICATOR_MODE_BLE_DISCONNECTED) {
+    if (should_animate) {
         const uint8_t wave = animation_sine_wave_0_to_255((uint32_t)k_uptime_get());
         animation_blue_brightness =
             (uint8_t)(((uint16_t)RGB_INDICATOR_BRIGHTNESS * (uint16_t)wave) / 255U);
@@ -336,7 +356,14 @@ static void update_animation_state(struct k_work *work) {
     bool rendered = render_pixels();
     if (!rendered) {
         LOG_WRN("Failed to render RGB indicator state; will retry on next refresh");
+        ensure_refresh_timer_running();
         return;
+    }
+
+    if (should_animate) {
+        ensure_refresh_timer_running();
+    } else {
+        ensure_refresh_timer_stopped();
     }
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
@@ -408,7 +435,6 @@ static int rgb_indicator_init(void) {
 #endif
 
     initialized = true;
-    k_timer_start(&rgb_indicator_refresh_timer, K_NO_WAIT, K_MSEC(RGB_INDICATOR_REFRESH_PERIOD_MS));
     k_work_submit(&apply_rgb_indicator_work);
 
     return 0;
