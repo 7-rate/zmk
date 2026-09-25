@@ -28,9 +28,13 @@
 #define RGB_INDICATOR_PROFILE_COUNT 3
 #define RGB_INDICATOR_ANIMATION_PERIOD_MS 500
 #define RGB_INDICATOR_ANIMATION_CYCLE_MS (RGB_INDICATOR_ANIMATION_PERIOD_MS * 2U)
-#define RGB_INDICATOR_REFRESH_PERIOD_MS 100
+#define RGB_INDICATOR_REFRESH_PERIOD_MS 33
 
 LOG_MODULE_DECLARE(zmk, 4);
+
+#if defined(CONFIG_SOC_NRF52840)
+#define NRF52840_SPIM3_ERRATA_195_REG ((volatile uint32_t *)0x4002F004)
+#endif
 
 struct rgb_indicator_state {
     uint8_t mode;
@@ -61,8 +65,10 @@ static bool ready_warning_logged;
 
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
 
+#include <zmk/activity.h>
 #include <zmk/ble.h>
 #include <zmk/endpoints.h>
+#include <zmk/events/activity_state_changed.h>
 #include <zmk/events/ble_active_profile_changed.h>
 #include <zmk/events/endpoint_changed.h>
 #include <zmk/split/central.h>
@@ -85,6 +91,8 @@ static bool synced_connected;
 static uint8_t normalize_profile_index(uint8_t profile_index) {
     return profile_index % RGB_INDICATOR_PROFILE_COUNT;
 }
+
+static struct led_rgb color_off(void) { return (struct led_rgb){.r = 0, .g = 0, .b = 0}; }
 
 static struct led_rgb color_blue_level(uint8_t brightness) {
     return (struct led_rgb){.r = 0, .g = 0, .b = brightness};
@@ -174,6 +182,11 @@ static bool render_pixels(void) {
         LOG_ERR("Failed to update RGB indicator strip (%d)", err);
         return false;
     }
+
+#if defined(CONFIG_SOC_NRF52840)
+    /* nRF52840 anomaly 195 workaround for SPIM3 after disable. */
+    *NRF52840_SPIM3_ERRATA_195_REG = 1U;
+#endif
 
     return true;
 }
@@ -334,7 +347,19 @@ static void update_animation_state(struct k_work *work) {
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
 
 static int rgb_indicator_listener(const zmk_event_t *eh) {
-    ARG_UNUSED(eh);
+    const struct zmk_activity_state_changed *activity_ev = as_zmk_activity_state_changed(eh);
+
+    /* Force a re-check + re-sync on wake so a stale disconnected animation from a sleep-induced
+     * BLE drop doesn't linger once the connection is actually re-established. */
+    if (activity_ev != NULL) {
+        if (activity_ev->state == ZMK_ACTIVITY_ACTIVE) {
+            refresh_state_requested = true;
+            force_sync_requested = true;
+            k_work_submit(&apply_rgb_indicator_work);
+        }
+
+        return ZMK_EV_EVENT_BUBBLE;
+    }
 
     refresh_state_requested = true;
     k_work_submit(&apply_rgb_indicator_work);
@@ -344,6 +369,7 @@ static int rgb_indicator_listener(const zmk_event_t *eh) {
 
 ZMK_LISTENER(rgb_indicator, rgb_indicator_listener);
 ZMK_SUBSCRIPTION(rgb_indicator, zmk_endpoint_changed);
+ZMK_SUBSCRIPTION(rgb_indicator, zmk_activity_state_changed);
 
 #if IS_ENABLED(CONFIG_ZMK_BLE)
 ZMK_SUBSCRIPTION(rgb_indicator, zmk_ble_active_profile_changed);

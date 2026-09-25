@@ -8,11 +8,13 @@
 
 #include <zephyr/device.h>
 #include <zephyr/sys/reboot.h>
+#include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
 #include <drivers/behavior.h>
 
 #include <zmk/behavior.h>
+#include <zmk/bootloader_led_indicator.h>
 
 #if IS_ENABLED(CONFIG_RETENTION_BOOT_MODE)
 
@@ -29,12 +31,26 @@ struct behavior_reset_config {
 #else
     int type;
 #endif /* IS_ENABLED(CONFIG_RETENTION_BOOT_MODE) */
+    bool bootloader;
 };
 
 static int on_keymap_binding_pressed(struct zmk_behavior_binding *binding,
                                      struct zmk_behavior_binding_event event) {
     const struct device *dev = zmk_behavior_get_binding(binding->behavior_dev);
     const struct behavior_reset_config *cfg = dev->config;
+
+#if IS_ENABLED(CONFIG_ZMK_BOOTLOADER_LED_INDICATOR)
+    if (cfg->bootloader) {
+        int err = zmk_bootloader_led_set_white();
+        if (err < 0) {
+            LOG_WRN("Failed to set bootloader LED white (%d)", err);
+        }
+
+        if (CONFIG_ZMK_BOOTLOADER_LED_TIMEOUT_MS > 0) {
+            k_msleep(CONFIG_ZMK_BOOTLOADER_LED_TIMEOUT_MS);
+        }
+    }
+#endif
 
 #if IS_ENABLED(CONFIG_RETENTION_BOOT_MODE)
     int ret = bootmode_set(cfg->boot_mode);
@@ -67,6 +83,7 @@ static const struct behavior_driver_api behavior_reset_driver_api = {
             IS_ENABLED(CONFIG_RETENTION_BOOT_MODE),                                                \
             (DT_INST_PROP(n, bootloader) ? BOOT_MODE_TYPE_BOOTLOADER : BOOT_MODE_TYPE_NORMAL),     \
             (.type = DT_INST_PROP(n, type))),                                                      \
+        .bootloader = DT_INST_PROP(n, bootloader),                                                 \
     };                                                                                             \
     BEHAVIOR_DT_INST_DEFINE(n, NULL, NULL, NULL, &behavior_reset_config_##n, POST_KERNEL,          \
                             CONFIG_KERNEL_INIT_PRIORITY_DEFAULT, &behavior_reset_driver_api);
