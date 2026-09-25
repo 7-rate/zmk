@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 	apt-get update && apt-get install -y --no-install-recommends task && \
 	rm -rf /var/lib/apt/lists/*
 
-COPY .bashrc tmp
-RUN mv /tmp/bashrc ~/.bashrc
+COPY .bashrc /tmp
+RUN mv /tmp/.bashrc ~/.bashrc
 
 # Also used as the west workspace root for CI firmware builds (see
 # .github/workflows/firmware-release.yml); matches the devcontainer workspace folder.
