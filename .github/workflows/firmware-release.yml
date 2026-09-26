@@ -1,7 +1,9 @@
 name: Firmware Release
 
 # Tag を push したときに task build (west build) で left/right の firmware をビルドし、
-# left_[version].uf2 / right_[version].uf2 として GitHub Release に添付する。
+# aspara_flat_left_[tag].uf2 / aspara_flat_right_[tag].uf2 として GitHub Release に添付する。
+# リポジトリのActionsポリシーでマーケットプレイスのアクション(uses:)が禁止されているため、
+# checkout・リリース作成も含めてすべて git / gh / docker コマンドのみで実行する。
 on:
   push:
     tags:
@@ -17,33 +19,14 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - name: Resolve firmware version from tag
-        id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: git clone --depth 1 --branch "${GITHUB_REF_NAME}" "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" .
 
       - name: Build ZMK dev container image
         run: docker build -t zmk-dev:ci .devcontainer
-
-      # zephyr/, modules/, tools/ are populated by `west update` and are not
-      # tracked in git (see .gitignore) - cache them to speed up repeat builds.
-      - name: Cache west workspace
-        uses: actions/cache@v5
-        env:
-          cache-name: cache-zephyr-modules
-        with:
-          path: |
-            modules/
-            tools/
-            zephyr/
-          key: ${{ runner.os }}-release-${{ env.cache-name }}-${{ hashFiles('app/west.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-release-${{ env.cache-name }}-
 
       - name: Initialize and update west workspace
         run: |
@@ -58,16 +41,11 @@ jobs:
       - name: Collect firmware artifacts
         run: |
           mkdir -p dist
-          cp app/build/left/zephyr/zmk.uf2 "dist/left_${{ steps.version.outputs.version }}.uf2"
-          cp app/build/right/zephyr/zmk.uf2 "dist/right_${{ steps.version.outputs.version }}.uf2"
-
-      - name: Upload workflow artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: aspara_flat-firmware-${{ steps.version.outputs.version }}
-          path: dist/*.uf2
+          cp app/build/left/zephyr/zmk.uf2 "dist/aspara_flat_left_${GITHUB_REF_NAME}.uf2"
+          cp app/build/right/zephyr/zmk.uf2 "dist/aspara_flat_right_${GITHUB_REF_NAME}.uf2"
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*.uf2
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/*.uf2 \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes
